@@ -63,3 +63,28 @@ def health(request):
         except OperationalError:
             return HttpResponse("Status: DB Down", status=503)
     return HttpResponse("Health OK", status=200)
+
+
+def start(request):
+    try:
+        return HttpResponse("Started", status=200)
+    except Exception:
+        return HttpResponse("Start Failed", status=503)
+
+
+def ready(request):
+    for db_name in connections:
+        try:
+            connections[db_name].cursor()
+        except OperationalError:
+            return HttpResponse("Status: DB Down", status=503)
+    return HttpResponse("Ready", status=200)
+
+
+def live(request):
+    for db_name in connections:
+        try:
+            connections[db_name].cursor()
+        except OperationalError:
+            return HttpResponse("Status: DB Down", status=503)
+    return HttpResponse("Live", status=200)
