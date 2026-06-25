@@ -84,5 +84,17 @@ jobs:
           install_components: gke-gcloud-auth-plugin
       - run: gcloud container clusters get-credentials $GKE_CLUSTER --region $GKE_REGION --project $PROJECT_ID
       - run: |
+          kubectl wait pod \
+            -l app=django,version=$TARGET_COLOR \
+            -n $NAMESPACE \
+            --for=condition=Ready \
+            --timeout=300s
+      - run: |
+          kubectl wait pod \
+            -l app=django,version=$TARGET_COLOR \
+            -n $NAMESPACE \
+            --for=condition=cloud.google.com/load-balancer-neg-ready \
+            --timeout=300s
+      - run: |
           kubectl patch svc django-svc -n $NAMESPACE \
             -p '{"spec":{"selector":{"app":"django","version":"'"$TARGET_COLOR"'"}}}'
