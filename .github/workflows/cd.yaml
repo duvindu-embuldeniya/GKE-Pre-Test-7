@@ -63,6 +63,7 @@ jobs:
       - run: |
           helm upgrade my-deployment helm-charts/deployments \
             --install \
+            --create-namespace \
             --set image.repository=$IMAGE \
             --set image.tag=$IMAGE_TAG \
             --namespace $NAMESPACE \
@@ -88,6 +89,7 @@ jobs:
       - run: |
           helm upgrade my-deployment helm-charts/deployments \
             --install \
+            --create-namespace \
             --set service.activeVersion=$TARGET_COLOR \
             --namespace $NAMESPACE \
             --reuse-values
