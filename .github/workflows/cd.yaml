@@ -89,12 +89,7 @@ jobs:
             -n $NAMESPACE \
             --for=condition=Ready \
             --timeout=300s
-      - run: |
-          kubectl wait pod \
-            -l app=django,version=$TARGET_COLOR \
-            -n $NAMESPACE \
-            --for=condition=cloud.google.com/load-balancer-neg-ready \
-            --timeout=300s
+      - run: sleep 30
       - run: |
           kubectl patch svc django-svc -n $NAMESPACE \
             -p '{"spec":{"selector":{"app":"django","version":"'"$TARGET_COLOR"'"}}}'
