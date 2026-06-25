@@ -50,8 +50,6 @@ jobs:
     env:
       TARGET_COLOR: ${{ needs.determine-color.outputs.target }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
@@ -59,15 +57,10 @@ jobs:
         with:
           install_components: gke-gcloud-auth-plugin
       - run: gcloud container clusters get-credentials $GKE_CLUSTER --region $GKE_REGION --project $PROJECT_ID
-      - uses: azure/setup-helm@v3
       - run: |
-          helm upgrade my-deployment helm-charts/deployments \
-            --install \
-            --create-namespace \
-            --set image.repository=$IMAGE \
-            --set $TARGET_COLOR.tag=$IMAGE_TAG \
-            --namespace $NAMESPACE \
-            --reuse-values
+          kubectl set image deployment/django-$TARGET_COLOR \
+            django-container=$IMAGE:$IMAGE_TAG \
+            -n $NAMESPACE
       - run: kubectl rollout status deployment/django-$TARGET_COLOR -n $NAMESPACE --timeout=900s
 
   cutover:
@@ -83,13 +76,6 @@ jobs:
         with:
           install_components: gke-gcloud-auth-plugin
       - run: gcloud container clusters get-credentials $GKE_CLUSTER --region $GKE_REGION --project $PROJECT_ID
-      - run: |
-          kubectl wait pod \
-            -l app=django,version=$TARGET_COLOR \
-            -n $NAMESPACE \
-            --for=condition=Ready \
-            --timeout=300s
-      - run: sleep 30
       - run: |
           kubectl patch svc django-svc -n $NAMESPACE \
             -p '{"spec":{"selector":{"app":"django","version":"'"$TARGET_COLOR"'"}}}'
