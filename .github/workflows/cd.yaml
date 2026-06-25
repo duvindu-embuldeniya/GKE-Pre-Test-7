@@ -68,7 +68,7 @@ jobs:
             --set image.tag=$IMAGE_TAG \
             --namespace $NAMESPACE \
             --reuse-values
-      - run: kubectl rollout status deployment/django-$TARGET_COLOR -n $NAMESPACE --timeout=120s
+      - run: kubectl rollout status deployment/django-$TARGET_COLOR -n $NAMESPACE --timeout=900s
 
   cutover:
     needs: [determine-color, deploy-idle]
