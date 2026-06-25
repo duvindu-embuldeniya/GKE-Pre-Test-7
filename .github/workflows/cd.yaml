@@ -1,0 +1,91 @@
+name: CD - Blue-Green Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy"
+        required: true
+        type: string
+      namespace:
+        description: "Target namespace"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - uat
+          - prod
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME }}
+  GKE_REGION: ${{ secrets.GKE_REGION }}
+  IMAGE: ${{ secrets.GAR_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GAR_REPO }}/${{ secrets.IMAGE_NAME }}
+  NAMESPACE: ${{ inputs.namespace }}
+  IMAGE_TAG: ${{ inputs.image_tag }}
+
+jobs:
+  determine-color:
+    runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.detect.outputs.target }}
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+      - run: gcloud container clusters get-credentials $GKE_CLUSTER --region $GKE_REGION --project $PROJECT_ID
+      - id: detect
+        run: |
+          ACTIVE=$(kubectl get svc django-svc -n $NAMESPACE -o jsonpath='{.spec.selector.version}')
+          TARGET=$([ "$ACTIVE" == "blue" ] && echo green || echo blue)
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+
+  deploy-idle:
+    needs: determine-color
+    runs-on: ubuntu-latest
+    env:
+      TARGET_COLOR: ${{ needs.determine-color.outputs.target }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+      - run: gcloud container clusters get-credentials $GKE_CLUSTER --region $GKE_REGION --project $PROJECT_ID
+      - uses: azure/setup-helm@v3
+      - run: |
+          helm upgrade my-deployment helm-charts/deployments \
+            --set image.repository=$IMAGE \
+            --set image.tag=$IMAGE_TAG \
+            --namespace $NAMESPACE \
+            --reuse-values
+      - run: kubectl rollout status deployment/django-$TARGET_COLOR -n $NAMESPACE --timeout=120s
+
+  cutover:
+    needs: [determine-color, deploy-idle]
+    runs-on: ubuntu-latest
+    env:
+      TARGET_COLOR: ${{ needs.determine-color.outputs.target }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+      - run: gcloud container clusters get-credentials $GKE_CLUSTER --region $GKE_REGION --project $PROJECT_ID
+      - uses: azure/setup-helm@v3
+      - run: |
+          helm upgrade my-deployment helm-charts/deployments \
+            --set service.activeVersion=$TARGET_COLOR \
+            --namespace $NAMESPACE \
+            --reuse-values
