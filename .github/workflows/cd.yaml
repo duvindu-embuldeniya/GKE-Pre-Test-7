@@ -76,8 +76,6 @@ jobs:
     env:
       TARGET_COLOR: ${{ needs.determine-color.outputs.target }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
@@ -85,11 +83,6 @@ jobs:
         with:
           install_components: gke-gcloud-auth-plugin
       - run: gcloud container clusters get-credentials $GKE_CLUSTER --region $GKE_REGION --project $PROJECT_ID
-      - uses: azure/setup-helm@v3
       - run: |
-          helm upgrade my-deployment helm-charts/deployments \
-            --install \
-            --create-namespace \
-            --set service.activeVersion=$TARGET_COLOR \
-            --namespace $NAMESPACE \
-            --reuse-values
+          kubectl patch svc django-svc -n $NAMESPACE \
+            -p '{"spec":{"selector":{"app":"django","version":"'"$TARGET_COLOR"'"}}}'
