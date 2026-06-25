@@ -89,7 +89,7 @@ jobs:
             -n $NAMESPACE \
             --for=condition=Ready \
             --timeout=300s
-      - run: sleep 30
+      - run: sleep 45
       - run: |
           kubectl patch svc django-svc -n $NAMESPACE \
             -p '{"spec":{"selector":{"app":"django","version":"'"$TARGET_COLOR"'"}}}'
