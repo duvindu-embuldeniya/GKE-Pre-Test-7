@@ -16,11 +16,11 @@ This is the flow most people assume that traffic goes through the Service like i
 User Browser → GCE Load Balancer → NEG → Pod (direct)
 ```
 
-- **Ingress** → only used at setup time, tells GKE to provision the Load Balancer and how to route to it
-- **Service** → only used at setup time, tells GKE which pods (by selector) belong in the NEG
-- **NEG** → the actual live backend list the Load Balancer uses to send traffic
+- **Ingress** → only used at setup time, tells GKE to provision the Load Balancer and how to route to it.
+- **Service** → only used at setup time, tells GKE which pods (by selector) belong in the NEG.
+- **NEG** → the actual live backend list the Load Balancer uses to send traffic.
 
-Service and Ingress are bypassed for the real external traffic path; only the NEG is live.
+Service and Ingress are bypassed for the real external traffic path, only the NEG is live.
 
 ## The GKE/GCE Limitation
 
